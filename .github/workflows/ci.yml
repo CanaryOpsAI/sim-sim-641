@@ -1,0 +1,26 @@
+# Horizon Simulation Lab -- simulated CI (Phase 6c). Runs on every push to
+# a branch, as a team's CI does; passes or fails on what the pushed code's
+# marker (.sim/ci-result) says, which the scenario decided. The check run
+# this job leaves on the head is what branch protection counts and what
+# Horizon reads.
+name: ci
+on:
+  push:
+    branches-ignore: [main]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: simulated tests
+        run: |
+          result=$(head -n 1 .sim/ci-result 2>/dev/null | tr -d '[:space:]')
+          result=${result:-success}
+          echo "simulated CI result: $result"
+          if [ "$result" != "success" ]; then
+            failing=$(sed -n '2p' .sim/ci-result 2>/dev/null | tr -d '\r')
+            if [ -n "$failing" ]; then
+              echo "::error file=${failing%%::*},line=1,title=${failing##*::}::${failing##*::} failed (simulated)"
+            fi
+            exit 1
+          fi
